@@ -15,5 +15,7 @@ Statistics are shown below of how many buys, sells, and holds as well as total p
 The price chart is able to me maneuvered using the tools in the top right of the screen <br />
 
 # Indicators 
-Moving Average Convergence Divergence (MACD)
-50, 100, and 200 period Simple Moving Average
+Moving Average Convergence Divergence (MACD) <br />
+50 period Simple Moving Average <br />
+100 period Simple Moving Average <br />
+200 period Simple Moving Average <br />
