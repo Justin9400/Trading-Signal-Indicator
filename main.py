@@ -16,6 +16,10 @@ def main():
     start_date = getDate()
     end_date = datetime.today()
     data_interval = '1d'
+    
+    symbols = {'Buy': 'circle', 'BUY': 'circle', 
+        'Hold': 'circle', 'HOLD': 'circle',
+        'SELL': 'circle', 'Sell': 'circle'}
 
     # Download the data with monthly frequency
     df = yf.download(ticker, start = start_date, end = end_date, interval = data_interval)
@@ -25,6 +29,8 @@ def main():
     df.dropna(subset=['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'], how='all', inplace=True)
 
     MACD(df)
+    SMA(df)
+    overall_indication(df)
 
 def getTicker():
     is_ticker = False
@@ -45,16 +51,49 @@ def getDate():
     Date = date(year, month, day)
     return Date
 
-def MACD(df):
+def SMA(df):
     # Calculate the moving averages
     df['MA50'] = df['Close'].rolling(window=50).mean()
     df['MA100'] = df['Close'].rolling(window=100).mean()
     df['MA200'] = df['Close'].rolling(window=200).mean()
 
-    symbols = {'Buy': 'circle', 'BUY': 'circle', 
-            'Hold': 'circle', 'HOLD': 'circle',
-            'SELL': 'circle', 'Sell': 'circle'}
+    df["SMA Overall"] = ""
 
+    previousBuyMA = False
+    previousSellMA = False
+    previousHoldMA = False
+    iterator1 = df.iterrows()
+    iterator2 = df.iterrows()
+    next(iterator2)
+    for (i1, row1), (i2, row2) in zip(iterator1, iterator2):
+        ## SMA
+        # Golden Cross
+        if row1['MA50'] < row1['MA100'] < row1['MA200'] and row2['MA50'] > row2['MA100'] > row2['MA200']:
+            if previousBuyMA == False:
+                df.at[i2, 'SMA Overall'] = 'Buy'
+                previousBuyMA = True
+                previousSellMA = False
+                previousHoldMA = False
+        elif row1['MA50'] > row1['MA100'] > row1['MA200']:
+            if previousBuyMA == False:
+                df.at[i2, 'SMA Overall'] = 'Buy'
+                previousBuyMA = True
+                previousSellMA = False
+                previousHoldMA = False
+        elif row1['MA50'] < row1['MA100'] < row1['MA200']:
+            if previousSellMA == False:
+                df.at[i2, 'SMA Overall'] = 'Sell'
+                previousSellMA = True
+                previousBuyMA = False
+                previousHoldMA = False
+        else:
+            if previousHoldMA == False:
+                df.at[i2, 'SMA Overall'] = 'Hold'
+                previousHoldMA = True
+                previousBuyMA = False
+                previousSellMA = False
+    
+def MACD(df):
     # Calculate the MACD indicator
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
@@ -63,15 +102,11 @@ def MACD(df):
 
     df['MACD'] = macd
     df['Signal'] = signal
-    df["SMA Overall"] = ""
     df["MACD Overall"] = ""
 
     previousBuy = False
     previousSell = False
 
-    previousBuyMA = False
-    previousSellMA = False
-    previousHoldMA = False
     iterator1 = df.iterrows()
     iterator2 = df.iterrows()
     next(iterator2)
@@ -100,6 +135,39 @@ def MACD(df):
             if previousSell == False:
                     df.at[i2, 'MACD Overall'] = 'Sell'
                     previousSell = True
-                    previousBuy = False
- 
+                    previousBuy = False          
+    
+def overall_indication(df):
+    df["Buy/Sell"] = ""
+
+    smaBuy = False
+    macDBuy = False
+    prevBuy = False
+    prevHold = False
+    prevSell = False
+    for index, row in df.iterrows():
+        if row['SMA Overall'] == "Buy":
+            smaBuy = True
+        elif row['SMA Overall'] == "Sell":
+            smaBuy = False
+        if row['MACD Overall'] == "Buy":
+            macDBuy = True
+        elif row['MACD Overall'] == "Sell":
+            macDBuy = False
+
+        if smaBuy == True and macDBuy == True and prevBuy == False:
+            df.at[index, 'Buy/Sell'] = 'BUY'
+            prevBuy = True
+            prevHold = False
+            prevSell = False
+        elif smaBuy == False and macDBuy == False and prevSell == False:
+            df.at[index, 'Buy/Sell'] = 'SELL' 
+            prevBuy = False 
+            prevSell = True      
+            prevHold = False       
+        elif smaBuy == True and  macDBuy == False and prevHold == False: #or (macDBuy == True and smaBuy == False):
+            df.at[index, 'Buy/Sell'] = 'HOLD' 
+            prevBuy = False
+            prevHold = True
+            prevSell = False
 main()
